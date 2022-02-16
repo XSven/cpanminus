@@ -62,6 +62,9 @@ sub module  { $_[0]->{module} }
 sub version { $_[0]->{version} }
 sub type    { $_[0]->{type} }
 
+sub git_opt { my $self = shift; $self->{git_opt} = shift if @_; $self->{git_opt} }
+sub ref_opt { my $self = shift; $self->{ref_opt} = shift if @_; $self->{ref_opt} }
+
 sub requires_version {
     my $self = shift;
 

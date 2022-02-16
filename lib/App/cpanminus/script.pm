@@ -1287,7 +1287,7 @@ sub self_upgrade {
 }
 
 sub install_module {
-    my($self, $module, $depth, $version) = @_;
+    my($self, $module, $depth, $version, $dep) = @_;
 
     $self->check_libs;
 
@@ -1305,7 +1305,7 @@ sub install_module {
         }
     }
 
-    my $dist = $self->resolve_name($module, $version);
+    my $dist = $self->resolve_name($module, $version, $dep);
     unless ($dist) {
         my $what = $module . ($version ? " ($version)" : "");
         $self->diag_fail("Couldn't find module or a distribution $what", 1);
@@ -1674,9 +1674,12 @@ sub verify_signature {
 }
 
 sub resolve_name {
-    my($self, $module, $version) = @_;
+    my($self, $module, $version, $dep) = @_;
 
     # Git
+    if ($dep && $dep->git_opt) {
+        return $self->git_uri($dep->git_opt . ($dep->ref_opt ? '@' . $dep->ref_opt : ''));
+    }
     if ($module =~ /(?:^git:|\.git(?:@.+)?$)/) {
         return $self->git_uri($module);
     }
@@ -1961,7 +1964,7 @@ sub install_deps {
     }
 
     for my $dep (@install) {
-        $self->install_module($dep->module, $depth + 1, $dep->version);
+        $self->install_module($dep->module, $depth + 1, $dep->version, $dep);
     }
 
     $self->chdir($self->{base});
@@ -2472,6 +2475,15 @@ sub merge_with_cpanfile {
     if ($self->{cpanfile_requirements} && !$dist->{cpanfile}) {
         for my $dep (@$deps) {
             $dep->merge_with($self->{cpanfile_requirements});
+        }
+    }
+
+    if ($dist->{cpanfile}) {
+        for my $dep (@$deps) {
+            my $opts = $dist->{cpanfile}->options_for_module($dep->module)
+              or next;
+            $dep->git_opt($opts->{git}) if $opts->{git};
+            $dep->ref_opt($opts->{ref}) if $opts->{ref};
         }
     }
 }
